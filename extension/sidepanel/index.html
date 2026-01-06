@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyLeaf Resume Builder</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+
+<body>
+    <div class="panel">
+        <header class="panel__header">
+            <h1 class="panel__title">Resume Builder</h1>
+            <p class="panel__subtitle">Add sections without writing LaTeX</p>
+        </header>
+
+        <main class="panel__content">
+            <!-- Quick Actions -->
+            <section class="section">
+                <h2 class="section__title">Quick Actions</h2>
+                <div class="quick-actions">
+                    <button class="quick-action" data-type="education">
+                        <span class="quick-action__icon">🎓</span>
+                        <span class="quick-action__label">Add Education</span>
+                    </button>
+                    <button class="quick-action quick-action--active" data-type="experience">
+                        <span class="quick-action__icon">💼</span>
+                        <span class="quick-action__label">Add Experience</span>
+                    </button>
+                    <button class="quick-action" data-type="skill">
+                        <span class="quick-action__icon">💡</span>
+                        <span class="quick-action__label">Add Skill</span>
+                    </button>
+                    <button class="quick-action" data-type="project">
+                        <span class="quick-action__icon">📁</span>
+                        <span class="quick-action__label">Add Project</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Form Container (Dynamic) -->
+            <section class="section" id="formContainer" style="display: none;">
+                <h2 class="section__title" id="formTitle">Add Section</h2>
+                <form id="sectionForm" class="form">
+                    <!-- Form fields injected dynamically -->
+                </form>
+            </section>
+
+            <!-- Customization Controls -->
+            <section class="section">
+                <h2 class="section__title">Customization</h2>
+
+                <div class="control">
+                    <div class="control__header">
+                        <label class="control__label">Font Size</label>
+                    </div>
+                    <div class="slider">
+                        <input type="range" min="10" max="14" value="11" class="slider__input" id="fontSizeSlider">
+                        <div class="slider__labels">
+                            <span>Small</span>
+                            <span>Large</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control">
+                    <div class="control__header">
+                        <label class="control__label">Section Spacing</label>
+                    </div>
+                    <div class="slider">
+                        <input type="range" min="0" max="10" value="5" class="slider__input" id="spacingSlider">
+                        <div class="slider__labels">
+                            <span>Compact</span>
+                            <span>Spacious</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control">
+                    <div class="control__header">
+                        <label class="control__label">Margin Presets</label>
+                    </div>
+                    <div class="segment">
+                        <button class="segment__option" data-margin="narrow">Narrow</button>
+                        <button class="segment__option segment__option--active" data-margin="normal">Normal</button>
+                        <button class="segment__option" data-margin="wide">Wide</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Snippet Library -->
+            <section class="section">
+                <h2 class="section__title">Snippet Library</h2>
+                <div class="snippets">
+                    <button class="snippet-btn" data-snippet="bullet">
+                        <span>•</span> Bullet Point
+                    </button>
+                    <button class="snippet-btn" data-snippet="bold">
+                        <span>B</span> Bold Text
+                    </button>
+                    <button class="snippet-btn" data-snippet="link">
+                        <span>🔗</span> Link
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="panel__footer">
+            <button class="btn btn--primary" id="compileBtn">
+                Compile Document
+            </button>
+        </footer>
+    </div>
+
+    <script src="sidepanel.js"></script>
+</body>
+
+</html>
