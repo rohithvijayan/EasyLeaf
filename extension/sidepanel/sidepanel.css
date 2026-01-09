@@ -58,6 +58,13 @@ body {
     margin-bottom: 12px;
 }
 
+.subsection-title {
+    margin-top: 8px;
+    /* Reduced from 16px */
+    margin-bottom: 8px;
+    /* Reduced from 12px */
+}
+
 /* Quick Actions */
 .quick-actions {
     display: flex;
@@ -255,6 +262,12 @@ body {
 
 /* Snippets */
 .snippets {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+#text-tools {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 8px;

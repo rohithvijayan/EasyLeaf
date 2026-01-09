@@ -9,58 +9,58 @@
   --el-primary: #4F46E5;
   --el-primary-hover: #4338CA;
   --el-primary-light: #6366F1;
-  
+
   /* Semantic Colors */
   --el-success: #22C55E;
   --el-error: #EF4444;
   --el-warning: #F59E0B;
   --el-info: #3B82F6;
-  
+
   /* Background Colors */
   --el-bg-dark: #0F172A;
   --el-bg-surface: #111827;
   --el-bg-elevated: #1F2937;
   --el-bg-input: #1E293B;
-  
+
   /* Border Colors */
   --el-border: #1F2937;
   --el-border-focus: #4F46E5;
   --el-border-error: #EF4444;
-  
+
   /* Text Colors */
   --el-text-primary: #E5E7EB;
   --el-text-secondary: #9CA3AF;
   --el-text-disabled: #6B7280;
-  
+
   /* Overlay Colors */
   --el-overlay: rgba(0, 0, 0, 0.6);
   --el-locked-bg: rgba(79, 70, 229, 0.1);
   --el-error-highlight: rgba(239, 68, 68, 0.15);
-  
+
   /* Typography */
   --el-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --el-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  
+
   /* Spacing */
   --el-space-xs: 4px;
   --el-space-sm: 8px;
   --el-space-md: 12px;
   --el-space-lg: 16px;
   --el-space-xl: 24px;
-  
+
   /* Border Radius */
   --el-radius-sm: 4px;
   --el-radius-md: 8px;
   --el-radius-lg: 12px;
   --el-radius-xl: 16px;
   --el-radius-pill: 9999px;
-  
+
   /* Shadows */
   --el-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
   --el-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
   --el-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
   --el-shadow-glow: 0 0 20px rgba(79, 70, 229, 0.3);
-  
+
   /* Transitions */
   --el-transition-fast: 150ms ease;
   --el-transition-base: 200ms ease;
@@ -554,27 +554,57 @@
 
 /* ===== ANIMATIONS ===== */
 @keyframes el-fade-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes el-slide-up {
-  from { opacity: 0; transform: translate(-50%, 100%); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  from {
+    opacity: 0;
+    transform: translate(-50%, 100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 @keyframes el-bounce-in {
-  from { opacity: 0; transform: scale(0) rotate(-180deg); }
-  to { opacity: 1; transform: scale(1) rotate(0); }
+  from {
+    opacity: 0;
+    transform: scale(0) rotate(-180deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
 }
 
 @keyframes el-pulse-error {
-  0%, 100% { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2); }
-  50% { box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.5); }
+
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.2);
+  }
+
+  50% {
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.5);
+  }
 }
 
 @keyframes el-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .el-spin {
@@ -583,11 +613,95 @@
 
 /* ===== REDUCED MOTION ===== */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ===== ADDITIONAL BADGE STYLES ===== */
+.el-badge--neutral {
+  background: rgba(107, 114, 128, 0.15);
+  color: var(--el-text-secondary);
+}
+
+.el-badge__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.el-pulse {
+  animation: el-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes el-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+/* ===== WARNING TOAST ===== */
+.el-toast--warning {
+  background: var(--el-warning);
+  color: #000;
+}
+
+/* ===== LOCKED LINE FLASH ===== */
+.el-locked-flash {
+  animation: el-locked-flash 0.3s ease;
+}
+
+@keyframes el-locked-flash {
+
+  0%,
+  100% {
+    background: var(--el-locked-bg);
+  }
+
+  50% {
+    background: rgba(239, 68, 68, 0.2);
+  }
+}
+
+/* ===== STRONGER LOCKED LINE INDICATOR ===== */
+.el-locked-line {
+  position: relative;
+  background: rgba(79, 70, 229, 0.15) !important;
+  border-left: 4px solid var(--el-primary) !important;
+  cursor: not-allowed;
+}
+
+.el-locked-line::before {
+  content: '🔒';
+  position: absolute;
+  left: -24px;
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Toast animation */
+@keyframes el-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }

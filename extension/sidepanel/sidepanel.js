@@ -50,7 +50,9 @@ const FORM_CONFIGS = {
 const SNIPPET_TEMPLATES = {
     bullet: '\\item ',
     bold: '\\textbf{}',
-    link: '\\href{URL}{TEXT}'
+    italic: '\\textit{}',
+    link: '\\href{URL}{TEXT}',
+    itemize: '\\begin{itemize}\n    \\item \n\\end{itemize}'
 };
 
 class SidePanel {
@@ -62,8 +64,30 @@ class SidePanel {
     init() {
         this.setupQuickActions();
         this.setupSnippets();
+        this.setupTextTools();
         this.setupCustomization();
         this.setupCompileButton();
+    }
+
+    setupTextTools() {
+        document.querySelectorAll('.text-tool').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const tool = btn.dataset.tool;
+                try {
+                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (!tab?.id) throw new Error('No active tab');
+
+                    await chrome.tabs.sendMessage(tab.id, {
+                        type: 'TRANSFORM_TEXT',
+                        payload: { type: tool }
+                    });
+                    this.showToast('Text transformed!');
+                } catch (error) {
+                    console.error('Text tool error:', error);
+                    this.showToast('Failed to transform text', 'error');
+                }
+            });
+        });
     }
 
     setupQuickActions() {
@@ -106,6 +130,12 @@ class SidePanel {
     `).join('');
 
         fieldsHTML += `
+      <div class="form-checkbox">
+        <label>
+            <input type="checkbox" name="include_header" checked>
+            Add Section Header
+        </label>
+      </div>
       <div class="form-actions">
         <button type="button" class="btn btn--ghost" id="cancelForm">Cancel</button>
         <button type="submit" class="btn btn--primary">Insert Section</button>
@@ -116,10 +146,11 @@ class SidePanel {
         container.style.display = 'block';
 
         // Setup form handlers
-        form.addEventListener('submit', (e) => this.handleFormSubmit(e));
-        document.getElementById('cancelForm').addEventListener('click', () => {
+        form.onsubmit = (e) => this.handleFormSubmit(e);
+        const cancelBtn = document.getElementById('cancelForm');
+        cancelBtn.onclick = () => {
             container.style.display = 'none';
-        });
+        };
     }
 
     async handleFormSubmit(e) {
@@ -134,7 +165,11 @@ class SidePanel {
                 type: 'GENERATE_SNIPPET',
                 payload: {
                     type: this.currentType,
-                    data: data
+                    type: this.currentType,
+                    data: {
+                        ...data,
+                        include_header: data.include_header === 'on'
+                    }
                 }
             });
 
@@ -201,14 +236,25 @@ class SidePanel {
     setupSnippets() {
         document.querySelectorAll('.snippet-btn').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const snippet = SNIPPET_TEMPLATES[btn.dataset.snippet];
+                const type = btn.dataset.snippet;
+                const snippet = SNIPPET_TEMPLATES[type];
+
                 if (snippet) {
-                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                    chrome.tabs.sendMessage(tab.id, {
-                        type: 'INSERT_SNIPPET',
-                        payload: { latex: snippet }
-                    });
-                    this.showToast('Snippet copied!');
+                    try {
+                        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                        if (!tab?.id) throw new Error('No active tab');
+
+                        await chrome.tabs.sendMessage(tab.id, {
+                            type: 'INSERT_SNIPPET',
+                            payload: { latex: snippet }
+                        });
+                        this.showToast('Snippet inserted!');
+                    } catch (error) {
+                        console.error('Snippet error:', error);
+                        this.showToast('Failed to insert snippet', 'error');
+                    }
+                } else {
+                    console.error('Unknown snippet type:', type);
                 }
             });
         });
@@ -250,7 +296,6 @@ class SidePanel {
         document.getElementById('compileBtn')?.addEventListener('click', async () => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             chrome.tabs.sendMessage(tab.id, { type: 'TRIGGER_COMPILE' });
-            this.showToast('Compiling...');
         });
     }
 

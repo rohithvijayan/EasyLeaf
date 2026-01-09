@@ -36,18 +36,32 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Notify content script
         if (isOnOverleaf) {
-            chrome.tabs.sendMessage(tab.id, {
-                type: 'SET_BEGINNER_MODE',
-                payload: { enabled: isEnabled }
-            });
+            try {
+                await chrome.tabs.sendMessage(tab.id, {
+                    type: 'SET_BEGINNER_MODE',
+                    payload: { enabled: isEnabled }
+                });
+            } catch (e) {
+                console.log('Content script not ready, state saved for next load');
+            }
         }
     });
 
     // Open side panel
     openPanelBtn.addEventListener('click', async () => {
         if (isOnOverleaf) {
-            await chrome.sidePanel.open({ tabId: tab.id });
-            window.close();
+            try {
+                await chrome.sidePanel.open({ tabId: tab.id });
+                window.close();
+            } catch (e) {
+                // Fallback: Try to set the panel
+                await chrome.sidePanel.setOptions({
+                    tabId: tab.id,
+                    path: 'sidepanel/index.html',
+                    enabled: true
+                });
+                window.close();
+            }
         } else {
             alert('Please open an Overleaf project first');
         }
@@ -55,6 +69,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Settings (placeholder)
     openSettingsBtn.addEventListener('click', () => {
-        chrome.runtime.openOptionsPage?.() || alert('Settings coming soon!');
+        alert('Settings coming soon!');
     });
 });
