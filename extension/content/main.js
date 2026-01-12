@@ -551,6 +551,7 @@
             this.state = new StateManager();
             this.editor = new EditorController();
             this.errorOverlay = window.ErrorOverlayManager ? new window.ErrorOverlayManager(this.editor) : null;
+            this.errorBubble = window.ErrorBubble ? new window.ErrorBubble(this.editor) : null;
             this.apiClient = window.ApiClient ? new window.ApiClient() : null;
             this.ui = null;
             this.statusDetector = null;
@@ -693,6 +694,11 @@
 
                             // Store result for later use (e.g., in bubble UI)
                             window.easyLeaf.lastAiResult = aiResult;
+
+                            // S7: Show Error Bubble with AI result
+                            if (this.errorBubble) {
+                                this.errorBubble.show(error.line, error, aiResult);
+                            }
 
                             // Dispatch event for UI to pick up
                             window.dispatchEvent(new CustomEvent('el-ai-response', {

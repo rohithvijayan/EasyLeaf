@@ -416,6 +416,101 @@
   overflow: visible !important;
 }
 
+/* ===== ERROR BUBBLE ===== */
+.el-error-bubble {
+  width: 360px;
+  background: var(--el-bg-surface);
+  border: 1px solid var(--el-error);
+  border-radius: var(--el-radius-lg);
+  box-shadow: var(--el-shadow-lg);
+  font-family: var(--el-font-sans);
+  animation: el-slide-up 0.2s ease;
+  overflow: hidden;
+}
+
+.el-error-bubble__header {
+  display: flex;
+  align-items: center;
+  gap: var(--el-space-sm);
+  padding: var(--el-space-md);
+  background: var(--el-bg-elevated);
+  border-bottom: 1px solid var(--el-border);
+}
+
+.el-error-bubble__icon {
+  font-size: 18px;
+}
+
+.el-error-bubble__title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-primary);
+}
+
+.el-error-bubble__close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--el-text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  border-radius: var(--el-radius-sm);
+  transition: all var(--el-transition-fast);
+}
+
+.el-error-bubble__close:hover {
+  background: var(--el-bg-dark);
+  color: var(--el-text-primary);
+}
+
+.el-error-bubble__body {
+  padding: var(--el-space-md);
+}
+
+.el-error-bubble__explanation {
+  font-size: 13px;
+  color: var(--el-text-primary);
+  margin: 0 0 var(--el-space-sm);
+  line-height: 1.5;
+}
+
+.el-error-bubble__fix {
+  font-size: 12px;
+  color: var(--el-text-secondary);
+  margin: 0 0 var(--el-space-md);
+}
+
+.el-error-bubble__code {
+  background: var(--el-bg-dark);
+  padding: var(--el-space-sm) var(--el-space-md);
+  border-radius: var(--el-radius-sm);
+  overflow-x: auto;
+}
+
+.el-error-bubble__code code {
+  font-family: var(--el-font-mono);
+  font-size: 12px;
+  color: var(--el-success);
+}
+
+.el-error-bubble__footer {
+  padding: var(--el-space-md);
+  border-top: 1px solid var(--el-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.el-error-bubble__apply {
+  display: flex;
+  align-items: center;
+  gap: var(--el-space-sm);
+}
+
 /* ===== PREAMBLE HIDING ===== */
 .el-preamble-hidden {
   display: none !important;

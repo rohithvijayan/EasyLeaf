@@ -26,6 +26,7 @@
                 "content/controllers/LogParser.js",
                 "content/controllers/ErrorOverlayManager.js",
                 "content/services/ApiClient.js",
+                "content/ui/ErrorBubble.js",
                 "content/main.js"
             ],
             "css": [
