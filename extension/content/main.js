@@ -669,6 +669,16 @@
                 if (this.errorOverlay && error.line) {
                     console.log('⚡ Showing error overlay on line', error.line);
                     this.errorOverlay.showError(error.line, error.message);
+
+                    // Context Extraction (S3)
+                    const context = this.editor.getContext(error.line);
+                    if (context) {
+                        console.log('🧠 Context Extracted:', {
+                            line: error.line,
+                            message: error.message,
+                            context
+                        });
+                    }
                 }
             });
 

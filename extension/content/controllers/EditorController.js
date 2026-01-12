@@ -63,6 +63,37 @@ export class EditorController {
         }
     }
 
+    // ===== CONTEXT EXTRACTION =====
+    getContext(lineNumber, radius = 5) {
+        const fullContent = this.getContent();
+        if (!fullContent) return null;
+
+        const lines = fullContent.split('\n');
+
+        // 1. Extract Preamble
+        let preambleEnd = 0;
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes('\\begin{document}')) {
+                preambleEnd = i;
+                break;
+            }
+        }
+        const preamble = lines.slice(0, preambleEnd + 1).join('\n');
+
+        // 2. Extract Surrounding Context
+        const targetIndex = lineNumber - 1; // 0-based
+        const start = Math.max(0, targetIndex - radius);
+        const end = Math.min(lines.length, targetIndex + radius + 1);
+        const contextLines = lines.slice(start, end).join('\n');
+
+        return {
+            preamble,
+            contextLines,
+            fullContext: preamble + '\n...\n' + contextLines,
+            lineContent: lines[targetIndex] || ''
+        };
+    }
+
     // ===== LOCKING =====
     lockStructuralElements() {
         const lines = document.querySelectorAll('.cm-line, .ace_line');
