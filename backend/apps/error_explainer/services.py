@@ -40,14 +40,48 @@ class GroqService:
                 messages=[
                     {
                         "role": "system",
-                        "content": (
-                            "You are a LaTeX expert debugger. "
-                            "Your goal is to fix compilation errors for beginners. "
-                            "Return ONLY valid JSON with keys: 'explanation' (1 sentence, simple English), "
-                            "'fix' (short action), and 'fixed_code' (the corrected line ONLY). "
-                            "Do not include markdown formatting or backticks around the JSON."
+                        "content": self._get_system_prompt()
+                    },
+                    # Few-shot Example 1: Typo
+                    {
+                        "role": "user",
+                        "content": self._build_prompt(
+                            "Undefined control sequence",
+                            "\\includegrphics{image.png}",
+                            {"contextLines": "\\begin{figure}\n\\includegrphics{image.png}\n\\end{figure}", "preamble": "\\usepackage{graphicx}"}
                         )
                     },
+                    {
+                        "role": "assistant",
+                        "content": '{"explanation": "You misspelled the command. It should be includegraphics, not includegrphics.", "fix": "Correct the typo.", "fixed_code": "\\\\includegraphics{image.png}"}'
+                    },
+                    # Few-shot Example 2: Missing brace
+                    {
+                        "role": "user",
+                        "content": self._build_prompt(
+                            "Missing } inserted",
+                            "\\textbf{Hello World",
+                            {"contextLines": "This is \\textbf{Hello World\nMore text.", "preamble": ""}
+                        )
+                    },
+                    {
+                        "role": "assistant",
+                        "content": '{"explanation": "You opened a curly brace { but forgot to close it with }.", "fix": "Add the missing closing brace.", "fixed_code": "\\\\textbf{Hello World}"}'
+                    },
+                    # Few-shot Example 3: Unknown environment
+                    {
+                        "role": "user",
+                        "content": self._build_prompt(
+                            "Environment itemize undefined",
+                            "\\begin{itemze}",
+                            {"contextLines": "\\begin{itemze}\n\\item First\n\\end{itemize}", "preamble": ""}
+                        )
+                    },
+                    {
+                        "role": "assistant",
+                        "content": '{"explanation": "You misspelled the environment name. It should be itemize, not itemze.", "fix": "Correct the spelling.", "fixed_code": "\\\\begin{itemize}"}'
+                    },
+                    # Actual User Query
                     {
                         "role": "user",
                         "content": prompt
@@ -71,19 +105,28 @@ class GroqService:
                 "fixed_code": invalid_line
             }
 
+    def _get_system_prompt(self):
+        return """You are a LaTeX debugging assistant for beginners. Your ONLY job is to:
+1. Identify the exact syntax error in the provided LaTeX code.
+2. Explain the error in ONE simple sentence (like explaining to a 5-year-old).
+3. Provide the CORRECTED version of the broken line ONLY.
+
+RULES:
+- NEVER invent new LaTeX commands. Only fix existing ones.
+- NEVER add packages or complex solutions. Keep fixes minimal.
+- If you're unsure, focus on the most common mistake (typos, missing braces).
+- Return ONLY valid JSON with keys: "explanation", "fix", "fixed_code".
+- The "fixed_code" must be a SINGLE LINE, the corrected version of the broken line."""
+
     def _build_prompt(self, error, line, context):
-        return f"""
-LaTeX Error: {error}
+        return f"""LaTeX Error: {error}
 Broken Line: {line}
 
-Context (Surrounding Lines):
-{context.get('contextLines', '')}
+Surrounding Code:
+{context.get('contextLines', 'N/A')}
 
-Preamble (Definitions):
-{context.get('preamble', '')}
+Preamble (Package Definitions):
+{context.get('preamble', 'N/A')}
 
-Task:
-1. Identify the syntax error.
-2. Explain it simply like I'm 5 years old.
-3. Provide the corrected version of the Broken Line.
-"""
+Analyze the error and provide a fix."""
+
