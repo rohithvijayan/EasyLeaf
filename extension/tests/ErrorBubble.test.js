@@ -105,4 +105,24 @@ describe('ErrorBubble', () => {
 
         assert.ok(setContentCalled);
     });
+
+    it('should show loading state', () => {
+        bubble.showLoading(2);
+
+        const bubbleEl = document.querySelector('.el-error-bubble');
+        assert.ok(bubbleEl);
+        assert.ok(bubbleEl.classList.contains('el-error-bubble--loading'));
+        assert.ok(bubbleEl.innerHTML.includes('Analyzing error'));
+    });
+
+    it('should show educational content for typo errors', () => {
+        bubble.show(2, { message: 'Typo' }, {
+            explanation: 'You misspelled the command',
+            fix: 'Fix typo',
+            fixed_code: 'fixed'
+        });
+
+        const whyBtn = document.querySelector('.el-error-bubble__why-btn');
+        assert.ok(whyBtn, 'Why button should exist for typo errors');
+    });
 });

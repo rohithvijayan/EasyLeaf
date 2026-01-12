@@ -9,6 +9,48 @@ class ErrorBubble {
         this.bubbleElement = null;
         this.currentError = null;
         this.currentAiResult = null;
+        this.isEducationalModeOpen = false;
+    }
+
+    /**
+     * Show a loading state while waiting for AI response.
+     * @param {number} lineNumber - 1-based line number
+     */
+    showLoading(lineNumber) {
+        this.hide();
+
+        const lineElement = this.getLineElement(lineNumber);
+        if (!lineElement) return;
+
+        this.bubbleElement = document.createElement('div');
+        this.bubbleElement.className = 'el-error-bubble el-error-bubble--loading';
+        this.bubbleElement.innerHTML = `
+            <div class="el-error-bubble__header">
+                <span class="el-error-bubble__icon">🤖</span>
+                <span class="el-error-bubble__title">AI Error Explainer</span>
+                <button class="el-error-bubble__close" aria-label="Close">&times;</button>
+            </div>
+            <div class="el-error-bubble__body">
+                <div class="el-loading">
+                    <div class="el-spinner"></div>
+                    <span>Analyzing error...</span>
+                </div>
+            </div>
+        `;
+
+        const rect = lineElement.getBoundingClientRect();
+        this.bubbleElement.style.position = 'fixed';
+        this.bubbleElement.style.top = `${rect.bottom + 8}px`;
+        this.bubbleElement.style.left = `${rect.left + 20}px`;
+        this.bubbleElement.style.zIndex = '10005';
+
+        document.body.appendChild(this.bubbleElement);
+
+        // Close button listener
+        const closeBtn = this.bubbleElement.querySelector('.el-error-bubble__close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hide());
+        }
     }
 
     /**
@@ -22,6 +64,7 @@ class ErrorBubble {
 
         this.currentError = { lineNumber, ...error };
         this.currentAiResult = aiResult;
+        this.isEducationalModeOpen = false;
 
         // Find line element for positioning
         const lineElement = this.getLineElement(lineNumber);
@@ -49,6 +92,8 @@ class ErrorBubble {
     }
 
     _buildContent(aiResult) {
+        const educationalContent = this._getEducationalNote(aiResult);
+
         return `
             <div class="el-error-bubble__header">
                 <span class="el-error-bubble__icon">🤖</span>
@@ -61,6 +106,17 @@ class ErrorBubble {
                 <div class="el-error-bubble__code">
                     <code>${this._escapeHtml(aiResult.fixed_code)}</code>
                 </div>
+                ${educationalContent ? `
+                <div class="el-error-bubble__educational">
+                    <button class="el-error-bubble__why-btn">
+                        <span class="el-error-bubble__why-icon">💡</span>
+                        Why did this happen?
+                    </button>
+                    <div class="el-error-bubble__why-content" style="display: none;">
+                        <p>${this._escapeHtml(educationalContent)}</p>
+                    </div>
+                </div>
+                ` : ''}
             </div>
             <div class="el-error-bubble__footer">
                 <button class="el-btn el-btn--fix el-error-bubble__apply">
@@ -68,6 +124,26 @@ class ErrorBubble {
                 </button>
             </div>
         `;
+    }
+
+    _getEducationalNote(aiResult) {
+        // Generate educational content based on error type
+        const explanation = aiResult.explanation?.toLowerCase() || '';
+
+        if (explanation.includes('misspell') || explanation.includes('typo')) {
+            return "LaTeX commands must be spelled exactly right. Unlike some programming languages, LaTeX doesn't have autocorrection.";
+        }
+        if (explanation.includes('brace') || explanation.includes('{') || explanation.includes('}')) {
+            return "Every opening brace { must have a matching closing brace }. Think of them like parentheses - they always come in pairs!";
+        }
+        if (explanation.includes('environment')) {
+            return "Environments in LaTeX start with \\begin{name} and must end with \\end{name}. The names must match exactly!";
+        }
+        if (explanation.includes('package')) {
+            return "Packages add extra features to LaTeX. If you use a command from a package, you need to include it in your preamble with \\usepackage{packagename}.";
+        }
+
+        return null; // No educational content for unknown errors
     }
 
     _attachListeners() {
@@ -83,6 +159,17 @@ class ErrorBubble {
         const applyBtn = this.bubbleElement.querySelector('.el-error-bubble__apply');
         if (applyBtn) {
             applyBtn.addEventListener('click', () => this.applyFix());
+        }
+
+        // Educational "Why?" toggle
+        const whyBtn = this.bubbleElement.querySelector('.el-error-bubble__why-btn');
+        const whyContent = this.bubbleElement.querySelector('.el-error-bubble__why-content');
+        if (whyBtn && whyContent) {
+            whyBtn.addEventListener('click', () => {
+                this.isEducationalModeOpen = !this.isEducationalModeOpen;
+                whyContent.style.display = this.isEducationalModeOpen ? 'block' : 'none';
+                whyBtn.classList.toggle('active', this.isEducationalModeOpen);
+            });
         }
 
         // Click outside to close
@@ -172,3 +259,4 @@ class ErrorBubble {
 }
 
 window.ErrorBubble = ErrorBubble;
+

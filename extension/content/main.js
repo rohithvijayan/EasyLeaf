@@ -684,6 +684,12 @@
                         // S6: Call Backend API
                         if (this.apiClient) {
                             console.log('🌐 Calling AI backend...');
+
+                            // Show loading state (Phase 4)
+                            if (this.errorBubble) {
+                                this.errorBubble.showLoading(error.line);
+                            }
+
                             const aiResult = await this.apiClient.explainError({
                                 message: error.message,
                                 line: error.line,
