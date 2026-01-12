@@ -23,6 +23,7 @@
             ],
             "js": [
                 "content/controllers/LogParser.js",
+                "content/controllers/ErrorOverlayManager.js",
                 "content/main.js"
             ],
             "css": [

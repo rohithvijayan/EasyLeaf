@@ -550,6 +550,7 @@
         constructor() {
             this.state = new StateManager();
             this.editor = new EditorController();
+            this.errorOverlay = window.ErrorOverlayManager ? new window.ErrorOverlayManager(this.editor) : null;
             this.ui = null;
             this.statusDetector = null;
             this.isInitialized = false;
@@ -568,7 +569,10 @@
                 this.statusDetector = new CompileStatusDetector(this.ui);
                 this.statusDetector.start();
 
+                this.statusDetector.start();
+
                 this.setupMessageListener();
+                this.setupErrorListeners();
 
                 if (this.state.isBeginnerMode) {
                     this.enableBeginnerMode();
@@ -657,6 +661,31 @@
 
                 return true;
             });
+        }
+
+        setupErrorListeners() {
+            window.addEventListener('el-compile-error', (e) => {
+                const error = e.detail;
+                if (this.errorOverlay && error.line) {
+                    console.log('⚡ Showing error overlay on line', error.line);
+                    this.errorOverlay.showError(error.line, error.message);
+                }
+            });
+
+            // Clear errors on new compile or edit
+            const observer = new MutationObserver(() => {
+                const logsPane = document.querySelector('.logs-pane, [class*="logs"]');
+                if (logsPane && !logsPane.textContent.includes('error')) {
+                    // If error gone from logs, clear overlay
+                    // Note: This is a bit aggressive, might clear unrelated errors. 
+                    // Ideally we listen to "compile success" event.
+                }
+            });
+
+            // For now, let's keep it simple: Clear when user edits
+            document.addEventListener('input', () => {
+                if (this.errorOverlay) this.errorOverlay.clear();
+            }, { capture: true });
         }
 
         transformSelection(type) {
