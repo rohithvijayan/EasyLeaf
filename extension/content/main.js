@@ -551,6 +551,7 @@
             this.state = new StateManager();
             this.editor = new EditorController();
             this.errorOverlay = window.ErrorOverlayManager ? new window.ErrorOverlayManager(this.editor) : null;
+            this.apiClient = window.ApiClient ? new window.ApiClient() : null;
             this.ui = null;
             this.statusDetector = null;
             this.isInitialized = false;
@@ -664,7 +665,7 @@
         }
 
         setupErrorListeners() {
-            window.addEventListener('el-compile-error', (e) => {
+            window.addEventListener('el-compile-error', async (e) => {
                 const error = e.detail;
                 if (this.errorOverlay && error.line) {
                     console.log('⚡ Showing error overlay on line', error.line);
@@ -678,6 +679,26 @@
                             message: error.message,
                             context
                         });
+
+                        // S6: Call Backend API
+                        if (this.apiClient) {
+                            console.log('🌐 Calling AI backend...');
+                            const aiResult = await this.apiClient.explainError({
+                                message: error.message,
+                                line: error.line,
+                                lineContent: context.lineContent,
+                                context: context
+                            });
+                            console.log('🤖 AI Response:', aiResult);
+
+                            // Store result for later use (e.g., in bubble UI)
+                            window.easyLeaf.lastAiResult = aiResult;
+
+                            // Dispatch event for UI to pick up
+                            window.dispatchEvent(new CustomEvent('el-ai-response', {
+                                detail: { error, aiResult }
+                            }));
+                        }
                     }
                 }
             });
