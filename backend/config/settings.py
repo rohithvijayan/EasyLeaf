@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'apps.templates',
     'apps.snippets',
     'apps.analytics',
+    'apps.error_explainer',
 ]
 
 MIDDLEWARE = [
