@@ -336,6 +336,7 @@
             this.observer = null;
             this.lastStatus = 'unknown';
             this.checkInterval = null;
+            this.parser = window.LogParser ? new window.LogParser() : null;
         }
 
         start() {
@@ -374,6 +375,16 @@
                 if (hasRealError || hasErrorLine) {
                     newStatus = 'error';
                     this.updateStatus(newStatus);
+
+                    if (this.parser) {
+                        const error = this.parser.parse(logText);
+                        if (error) {
+                            console.log('🌿 Extracted Error:', error);
+                            window.dispatchEvent(new CustomEvent('el-compile-error', {
+                                detail: error
+                            }));
+                        }
+                    }
                     return;
                 }
             }

@@ -22,6 +22,7 @@
                 "*://*.overleaf.com/project/*"
             ],
             "js": [
+                "content/controllers/LogParser.js",
                 "content/main.js"
             ],
             "css": [
