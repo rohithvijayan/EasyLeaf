@@ -5,9 +5,20 @@
 
 class ApiClient {
     constructor() {
-        // Default to localhost for development. 
-        // In production, this should be configured via chrome.storage or environment.
-        this.baseUrl = 'http://localhost:8000/api/v1';
+        // ============================================
+        // ⚠️ CONFIGURATION: Change this URL for development
+        // ============================================
+        // For local development with ngrok:
+        //   1. Run: ngrok http 8000
+        //   2. Copy the https URL (e.g., https://abc123.ngrok.io)
+        //   3. Paste it below
+        // For production, use your deployed backend URL.
+        // ============================================
+
+        // CHANGE THIS to your ngrok URL when testing:
+        this.baseUrl = 'https://localhost:8000/api/v1';
+        // Example with ngrok: this.baseUrl = 'https://abc123.ngrok-free.app/api/v1';
+
         this.cache = new Map();
     }
 

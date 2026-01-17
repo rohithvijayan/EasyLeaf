@@ -14,7 +14,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,interoceanic-elliot-unelectric.ngrok-free.dev').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'corsheaders',
+    'django_extensions',
     
     # Local apps
     'apps.errors',
@@ -35,10 +36,12 @@ INSTALLED_APPS = [
     'apps.snippets',
     'apps.analytics',
     'apps.error_explainer',
+
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'config.middleware.PrivateNetworkAccessMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -138,10 +141,33 @@ REST_FRAMEWORK = {
 # CORS
 CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS', 
-    'http://localhost:3000'
+    'http://localhost:3000,https://www.overleaf.com,https://overleaf.com'
 ).split(',')
 
-CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allow all in development
+CORS_ALLOW_ALL_ORIGINS = True  # Allow all in development
+
+# Allow Chrome extension origins
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^chrome-extension://.*$",
+    r"^https://.*\.ngrok-free\.dev$",
+]
+
+# Allow credentials and headers for Chrome extension
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
+# Private Network Access headers (for localhost access from public sites)
+CORS_ALLOW_PRIVATE_NETWORK = True
 
 # Groq API
 GROQ_API_KEY = os.getenv('GROQ_API_KEY', '')

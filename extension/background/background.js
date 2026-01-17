@@ -4,7 +4,7 @@
  */
 
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = 'https://interoceanic-elliot-unelectric.ngrok-free.dev/api/v1';
 
 // State
 let isBeginnerMode = false;
@@ -38,6 +38,9 @@ async function handleMessage(message, sender) {
         case 'EXPLAIN_ERROR':
             return await explainError(message.payload);
 
+        case 'EXPLAIN_AI_ERROR':
+            return await explainAIError(message.payload);
+
         case 'SAVE_GOOD_STATE':
             return await saveGoodState(message.payload);
 
@@ -57,6 +60,7 @@ async function handleMessage(message, sender) {
 async function getState() {
     const state = await chrome.storage.local.get([
         'isBeginnerMode',
+        'isAiAssistEnabled',
         'lastGoodState'
     ]);
     return state;
@@ -99,6 +103,57 @@ async function explainError(errorData) {
     } catch (error) {
         console.error('Error explaining error:', error);
         return getFallbackExplanation(errorData.error_message);
+    }
+}
+
+// AI Error explanation via Groq API (for Error Explainer feature)
+async function explainAIError(errorData) {
+    const cacheKey = `${errorData.message}:${errorData.lineContent}`;
+    const { aiErrorCache = {} } = await chrome.storage.local.get('aiErrorCache');
+
+    // Check cache
+    if (aiErrorCache[cacheKey]) {
+        console.log('🎯 Service Worker: Cache hit for AI error explanation');
+        return aiErrorCache[cacheKey];
+    }
+
+    try {
+        console.log('🌐 Service Worker: Calling AI backend...', errorData);
+        const response = await fetch(`${API_BASE_URL}/debugger/explain/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                error_message: errorData.message,
+                invalid_line: errorData.lineContent,
+                context: {
+                    preamble: errorData.context?.preamble || '',
+                    contextLines: errorData.context?.contextLines || ''
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log('🤖 Service Worker: AI Response received:', result);
+
+        // Cache the result
+        aiErrorCache[cacheKey] = result;
+        await chrome.storage.local.set({ aiErrorCache });
+
+        return result;
+
+    } catch (error) {
+        console.error('🔴 Service Worker: API Error:', error);
+        return {
+            explanation: 'Could not connect to AI service.',
+            fix: 'Check if the backend is running.',
+            fixed_code: errorData.lineContent
+        };
     }
 }
 

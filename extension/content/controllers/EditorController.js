@@ -3,7 +3,7 @@
  * Manages interactions with Overleaf's code editor
  */
 
-export class EditorController {
+class EditorController {
     constructor(state) {
         this.state = state;
         this.lockedLines = new Set();
@@ -44,6 +44,7 @@ export class EditorController {
                 cm6.cmView.dispatch({
                     changes: { from: 0, to: state.doc.length, insert: content }
                 });
+                console.log('✅ setContent succeeded via CodeMirror 6');
                 return true;
             }
 
@@ -51,14 +52,15 @@ export class EditorController {
             const ace = window.ace?.edit(document.querySelector('.ace_editor'));
             if (ace) {
                 ace.setValue(content, -1);
+                console.log('✅ setContent succeeded via Ace');
                 return true;
             }
 
-            console.warn('Could not set content - editor not found');
+            console.warn('❌ Could not set content - editor not found');
             return false;
 
         } catch (error) {
-            console.error('Failed to set editor content:', error);
+            console.error('❌ Failed to set editor content:', error);
             return false;
         }
     }
@@ -302,3 +304,5 @@ export class EditorController {
         return this.setContent(newContent);
     }
 }
+
+window.EditorController = EditorController;

@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EasyLeaf</title>
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
   <div class="popup">
     <header class="popup__header">
@@ -34,6 +36,16 @@
         <p class="toggle-desc">Protects your document from breaking</p>
       </div>
 
+      <div class="popup__toggle">
+        <label class="toggle-row">
+          <span class="toggle-label">🤖 AI Assist</span>
+          <div class="toggle" id="aiAssistToggle">
+            <div class="toggle__knob"></div>
+          </div>
+        </label>
+        <p class="toggle-desc">Get AI-powered error explanations and fixes</p>
+      </div>
+
       <div class="popup__actions">
         <button class="action-btn" id="openPanel">
           <span class="action-icon">📝</span>
@@ -55,4 +67,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>

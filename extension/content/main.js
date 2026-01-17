@@ -18,14 +18,19 @@
             this.lastGoodState = null;
             this.currentTemplate = null;
             this.hasError = false;
+            this.isAiAssistEnabled = true; // Default to enabled
         }
 
         async load() {
             try {
                 const state = await chrome.runtime.sendMessage({ type: 'GET_STATE' });
                 this.isBeginnerMode = state?.isBeginnerMode || false;
+                this.isAiAssistEnabled = state?.isAiAssistEnabled !== false; // Default true if not set
                 this.lastGoodState = state?.lastGoodState || null;
-                console.log('🌿 State loaded:', { isBeginnerMode: this.isBeginnerMode });
+                console.log('🌿 State loaded:', {
+                    isBeginnerMode: this.isBeginnerMode,
+                    isAiAssistEnabled: this.isAiAssistEnabled
+                });
             } catch (error) {
                 console.error('Failed to load state:', error);
             }
@@ -327,6 +332,58 @@
                 return this.insertViaClipboard(text);
             }
         }
+
+        // ===== CONTEXT EXTRACTION (for AI Assist) =====
+        getContext(lineNumber, radius = 5) {
+            const fullContent = this.getContent();
+            if (!fullContent) return null;
+
+            const lines = fullContent.split('\n');
+
+            // 1. Extract Preamble
+            let preambleEnd = 0;
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('\\begin{document}')) {
+                    preambleEnd = i;
+                    break;
+                }
+            }
+            const preamble = lines.slice(0, preambleEnd + 1).join('\n');
+
+            // 2. Extract Surrounding Context
+            const targetIndex = lineNumber - 1; // 0-based
+            const start = Math.max(0, targetIndex - radius);
+            const end = Math.min(lines.length, targetIndex + radius + 1);
+            const contextLines = lines.slice(start, end).join('\n');
+
+            return {
+                preamble,
+                contextLines,
+                fullContext: preamble + '\n...\n' + contextLines,
+                lineContent: lines[targetIndex] || ''
+            };
+        }
+
+        // ===== SET CONTENT (for AI Fix) =====
+        setContent(content) {
+            try {
+                const cmEditor = document.querySelector('.cm-editor');
+                if (cmEditor && cmEditor.cmView) {
+                    const view = cmEditor.cmView;
+                    const { state } = view;
+                    view.dispatch({
+                        changes: { from: 0, to: state.doc.length, insert: content }
+                    });
+                    console.log('✅ Content set via CodeMirror 6');
+                    return true;
+                }
+                console.warn('Could not set content - editor not found');
+                return false;
+            } catch (error) {
+                console.error('Failed to set editor content:', error);
+                return false;
+            }
+        }
     }
 
     // ===== COMPILE STATUS DETECTOR =====
@@ -337,14 +394,71 @@
             this.lastStatus = 'unknown';
             this.checkInterval = null;
             this.parser = window.LogParser ? new window.LogParser() : null;
+            this.lastErrorKey = null; // Track last error to avoid duplicates
         }
 
         start() {
             // Initial check after delay
             setTimeout(() => this.checkCompileStatus(), 2000);
 
-            // Periodic check every 3 seconds
-            this.checkInterval = setInterval(() => this.checkCompileStatus(), 3000);
+            // Replace polling with MutationObserver (Event-driven)
+            this.setupObserver();
+        }
+
+        setupObserver() {
+            // Watch specific elements for changes instead of global body if possible, 
+            // but body observer with filters is safest for dynamic React apps
+            if (this.observer) this.observer.disconnect();
+
+            this.observer = new MutationObserver((mutations) => {
+                let shouldCheck = false;
+
+                for (const mutation of mutations) {
+                    // Check for Recompile button state changes
+                    if (mutation.type === 'attributes') {
+                        const target = mutation.target;
+                        const className = target.className || '';
+                        const ariaLabel = target.getAttribute('aria-label') || '';
+
+                        if (className.includes && (className.includes('recompile') || ariaLabel.includes('Recompile'))) {
+                            shouldCheck = true;
+                            break;
+                        }
+                    }
+
+                    // Check for Logs pane appearing/updating
+                    if (mutation.type === 'childList') {
+                        // Check added nodes for logs pane or error/warning badges
+                        for (const node of mutation.addedNodes) {
+                            if (node.nodeType === 1) { // Element
+                                const cls = node.className || '';
+                                if (typeof cls === 'string' && (cls.includes('logs') || cls.includes('error'))) {
+                                    shouldCheck = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (shouldCheck) break;
+                }
+
+                if (shouldCheck) {
+                    // Debounce the check to avoid thrashing during rapid updates
+                    if (this.checkTimeout) clearTimeout(this.checkTimeout);
+                    this.checkTimeout = setTimeout(() => this.checkCompileStatus(), 500);
+                }
+            });
+
+            // Observe body for changes
+            this.observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'disabled', 'aria-label', 'aria-busy']
+            });
+
+            console.log('👀 Event-driven detector started (MutationObserver)');
         }
 
         checkCompileStatus() {
@@ -359,51 +473,94 @@
                 if (btnText.includes('compiling') || btnClasses.includes('loading') || btnClasses.includes('spinning')) {
                     newStatus = 'compiling';
                     this.updateStatus(newStatus);
+                    // Reset error key when compiling starts
+                    this.lastErrorKey = null;
                     return;
                 }
             }
 
             // Check for ACTUAL errors in logs (be more specific)
-            const logsPane = document.querySelector('.logs-pane, [class*="logs"]');
-            if (logsPane && logsPane.offsetParent !== null) {
+            const logsPane = document.querySelector('.logs-pane, [class*="logs"], [class*="pdf-logs"]');
+
+            // DEBUG: Log whether we found logs pane
+            console.log('🔍 [DEBUG] Logs pane search:', {
+                found: !!logsPane,
+                visible: logsPane?.offsetParent !== null,
+                parserReady: !!this.parser
+            });
+
+            if (logsPane) {
                 const logText = logsPane.textContent || '';
 
-                // Look for specific error patterns
-                const hasRealError = /\d+\s+error/i.test(logText) && !/0\s+error/i.test(logText);
-                const hasErrorLine = /^!.*error/im.test(logText);
+                // Look for specific error patterns - expanded
+                const hasRealError = /\\d+\\s+error/i.test(logText) && !/0\\s+error/i.test(logText);
+                const hasErrorLine = /^!\\s*.*$/m.test(logText);  // Any line starting with !
+                const hasLatexError = /LaTeX Error|Undefined control sequence|Missing/i.test(logText);
 
-                if (hasRealError || hasErrorLine) {
+                console.log('🔍 [DEBUG] Error detection:', { hasRealError, hasErrorLine, hasLatexError, logTextLength: logText.length });
+
+                if (hasRealError || hasErrorLine || hasLatexError) {
                     newStatus = 'error';
                     this.updateStatus(newStatus);
 
                     if (this.parser) {
-                        const error = this.parser.parse(logText);
-                        if (error) {
-                            console.log('🌿 Extracted Error:', error);
-                            window.dispatchEvent(new CustomEvent('el-compile-error', {
-                                detail: error
-                            }));
+                        // Use parseAll() instead of parse() to get all errors
+                        const errors = this.parser.parseAll(logText);
+
+                        // Create unique key considering first error (usually root cause)
+                        const primaryError = errors[0];
+                        if (primaryError) {
+                            const errorKey = `${primaryError.line}:${primaryError.message}`;
+
+                            // Only dispatch if it's a NEW error or forced check
+                            if (this.lastErrorKey !== errorKey) {
+                                console.log('⚡ [DEBUG] New error detected:', errors.length, 'errors');
+                                this.lastErrorKey = errorKey;
+
+                                // Dispatch event with ALL errors
+                                window.dispatchEvent(new CustomEvent('el-compile-error', {
+                                    detail: primaryError // Keep sending single error for now until sidebar is ready
+                                }));
+
+                                // Dispatch new multi-error event (future proofing)
+                                window.dispatchEvent(new CustomEvent('el-compile-errors', {
+                                    detail: { errors }
+                                }));
+                            } else {
+                                console.log('🌿 ⏭️ Same error as before, skipping dispatch');
+                            }
+                            return;
                         }
                     }
-                    return;
+
+                    // Check for visible error entries
+                    const errorEntries = document.querySelectorAll('.log-entry-error, .log-entry.error');
+                    let hasVisibleError = false;
+                    for (const entry of errorEntries) {
+                        if (entry.offsetParent !== null && entry.textContent.trim().length > 0) {
+                            hasVisibleError = true;
+
+                            // Try to parse from entry
+                            if (this.parser) {
+                                const error = this.parser.parse(entry.textContent);
+                                if (error) {
+                                    console.log('🌿 ✅ Error from entry:', error);
+                                    window.dispatchEvent(new CustomEvent('el-compile-error', {
+                                        detail: error
+                                    }));
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    if (hasVisibleError) {
+                        newStatus = 'error';
+                    }
+
+                    this.updateStatus(newStatus);
                 }
             }
-
-            // Check for visible error entries
-            const errorEntries = document.querySelectorAll('.log-entry-error');
-            let hasVisibleError = false;
-            for (const entry of errorEntries) {
-                if (entry.offsetParent !== null && entry.textContent.trim().length > 0) {
-                    hasVisibleError = true;
-                    break;
-                }
-            }
-
-            if (hasVisibleError) {
-                newStatus = 'error';
-            }
-
-            this.updateStatus(newStatus);
         }
 
         updateStatus(newStatus) {
@@ -415,6 +572,12 @@
                     window.easyLeaf.state.hasError = (newStatus === 'error');
                 }
             }
+        }
+
+        forceCheck() {
+            // Force a re-check and clear duplicate protection
+            this.lastErrorKey = null;
+            this.checkCompileStatus();
         }
 
         stop() {
@@ -551,7 +714,8 @@
             this.state = new StateManager();
             this.editor = new EditorController();
             this.errorOverlay = window.ErrorOverlayManager ? new window.ErrorOverlayManager(this.editor) : null;
-            this.errorBubble = window.ErrorBubble ? new window.ErrorBubble(this.editor) : null;
+            // Replace ErrorBubble with ErrorListSidebar
+            this.errorSidebar = window.ErrorListSidebar ? new window.ErrorListSidebar(this.editor) : null;
             this.apiClient = window.ApiClient ? new window.ApiClient() : null;
             this.ui = null;
             this.statusDetector = null;
@@ -650,6 +814,26 @@
                         }
                         sendResponse({ success: true });
                         break;
+
+                    case 'SET_AI_ASSIST':
+                        console.log('⚡ [MESSAGE] Setting AI Assist:', message.payload);
+                        this.state.isAiAssistEnabled = message.payload.enabled;
+
+                        if (this.state.isAiAssistEnabled) {
+                            console.log('⚡ AI Assist Enabled - Forcing check...', this.statusDetector);
+                            // Reset error key and force immediate check to show duplicate errors
+                            if (this.statusDetector) {
+                                this.statusDetector.forceCheck();
+                            }
+                        } else {
+                            // If disabled, hide any active sidebar
+                            if (this.errorSidebar) {
+                                this.errorSidebar.hide();
+                            }
+                        }
+                        sendResponse({ success: true });
+                        break;
+
                     case 'TRANSFORM_TEXT':
                         try {
                             const result = this.transformSelection(message.payload.type);
@@ -664,70 +848,71 @@
                 return true;
             });
         }
-
         setupErrorListeners() {
-            window.addEventListener('el-compile-error', async (e) => {
-                const error = e.detail;
-                if (this.errorOverlay && error.line) {
-                    console.log('⚡ Showing error overlay on line', error.line);
-                    this.errorOverlay.showError(error.line, error.message);
+            // Handle MULTIPLE errors (New Sidebar Logic)
+            window.addEventListener('el-compile-errors', async (event) => {
+                const { errors } = event.detail;
+                console.log('⚡ [MAIN] Received multiple errors:', errors);
 
-                    // Context Extraction (S3)
-                    const context = this.editor.getContext(error.line);
-                    if (context) {
-                        console.log('🧠 Context Extracted:', {
-                            line: error.line,
-                            message: error.message,
-                            context
-                        });
-
-                        // S6: Call Backend API
-                        if (this.apiClient) {
-                            console.log('🌐 Calling AI backend...');
-
-                            // Show loading state (Phase 4)
-                            if (this.errorBubble) {
-                                this.errorBubble.showLoading(error.line);
-                            }
-
-                            const aiResult = await this.apiClient.explainError({
-                                message: error.message,
-                                line: error.line,
-                                lineContent: context.lineContent,
-                                context: context
-                            });
-                            console.log('🤖 AI Response:', aiResult);
-
-                            // Store result for later use (e.g., in bubble UI)
-                            window.easyLeaf.lastAiResult = aiResult;
-
-                            // S7: Show Error Bubble with AI result
-                            if (this.errorBubble) {
-                                this.errorBubble.show(error.line, error, aiResult);
-                            }
-
-                            // Dispatch event for UI to pick up
-                            window.dispatchEvent(new CustomEvent('el-ai-response', {
-                                detail: { error, aiResult }
-                            }));
-                        }
-                    }
+                if (this.state.isAiAssistEnabled === false) {
+                    console.log('🛑 AI Assist disabled, ignoring errors');
+                    return;
                 }
+
+                if (!errors || errors.length === 0) return;
+
+                // 1. Show loading state in sidebar (optional improvement for later)
+                // For now, we'll wait for results before showing
+
+                // 2. Process all errors in parallel
+                const aiPromises = errors.map(async (error) => {
+                    const targetLine = error.line || 1;
+                    const context = this.editor.getContext(targetLine);
+
+                    try {
+                        const response = await chrome.runtime.sendMessage({
+                            type: 'EXPLAIN_AI_ERROR',
+                            payload: {
+                                message: error.message, // Send 'message' not 'error'
+                                lineContent: context?.lineContent || '', // Explicitly send lineContent
+                                context: context,
+                                line: targetLine
+                            }
+                        });
+                        return response;
+                    } catch (err) {
+                        console.error('AI Request failed for error:', error, err);
+                        return null;
+                    }
+                });
+
+                try {
+                    this.ui.showToast('🤖 Analyzing errors...', 'info');
+                    const results = await Promise.all(aiPromises);
+
+                    console.log('✅ AI Analysis Complete:', results);
+
+                    // 3. Show Sidebar with results
+                    if (this.errorSidebar) {
+                        this.errorSidebar.show(errors, results);
+                    }
+                } catch (err) {
+                    console.error('Failed to process errors:', err);
+                    this.ui.showToast('AI Analysis failed', 'error');
+                }
+            });
+
+            // Legacy listener for single error (keep for fallback)
+            window.addEventListener('el-compile-error', (event) => {
+                // We can ignore this now since we handle el-compile-errors
+                // or keep it just for logging
+                console.log('⚡ [LEGACY] Single error event received (ignored in favor of multi-error)');
             });
 
             // Clear errors on new compile or edit
-            const observer = new MutationObserver(() => {
-                const logsPane = document.querySelector('.logs-pane, [class*="logs"]');
-                if (logsPane && !logsPane.textContent.includes('error')) {
-                    // If error gone from logs, clear overlay
-                    // Note: This is a bit aggressive, might clear unrelated errors. 
-                    // Ideally we listen to "compile success" event.
-                }
-            });
-
-            // For now, let's keep it simple: Clear when user edits
             document.addEventListener('input', () => {
                 if (this.errorOverlay) this.errorOverlay.clear();
+                if (this.errorBubble) this.errorBubble.hide();
             }, { capture: true });
         }
 

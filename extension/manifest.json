@@ -11,7 +11,7 @@
     ],
     "host_permissions": [
         "*://*.overleaf.com/*",
-        "http://localhost:8000/*"
+        "https://localhost:8000/*"
     ],
     "background": {
         "service_worker": "background/background.js",
@@ -27,6 +27,7 @@
                 "content/controllers/ErrorOverlayManager.js",
                 "content/services/ApiClient.js",
                 "content/ui/ErrorBubble.js",
+                "content/ui/ErrorListSidebar.js",
                 "content/main.js"
             ],
             "css": [

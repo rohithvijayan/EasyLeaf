@@ -3,15 +3,22 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const toggle = document.getElementById('beginnerToggle');
+    const beginnerToggle = document.getElementById('beginnerToggle');
+    const aiAssistToggle = document.getElementById('aiAssistToggle');
     const status = document.getElementById('status');
     const openPanelBtn = document.getElementById('openPanel');
     const openSettingsBtn = document.getElementById('openSettings');
 
     // Load initial state
-    const state = await chrome.storage.local.get(['isBeginnerMode']);
+    const state = await chrome.storage.local.get(['isBeginnerMode', 'isAiAssistEnabled']);
+
     if (state.isBeginnerMode) {
-        toggle.classList.add('active');
+        beginnerToggle.classList.add('active');
+    }
+
+    // AI Assist defaults to enabled
+    if (state.isAiAssistEnabled !== false) {
+        aiAssistToggle.classList.add('active');
     }
 
     // Check if we're on Overleaf
@@ -27,10 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     `;
     }
 
-    // Toggle handler
-    toggle.addEventListener('click', async () => {
-        toggle.classList.toggle('active');
-        const isEnabled = toggle.classList.contains('active');
+    // Beginner Mode toggle handler
+    beginnerToggle.addEventListener('click', async () => {
+        beginnerToggle.classList.toggle('active');
+        const isEnabled = beginnerToggle.classList.contains('active');
 
         await chrome.storage.local.set({ isBeginnerMode: isEnabled });
 
@@ -39,6 +46,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             try {
                 await chrome.tabs.sendMessage(tab.id, {
                     type: 'SET_BEGINNER_MODE',
+                    payload: { enabled: isEnabled }
+                });
+            } catch (e) {
+                console.log('Content script not ready, state saved for next load');
+            }
+        }
+    });
+
+    // AI Assist toggle handler
+    aiAssistToggle.addEventListener('click', async () => {
+        aiAssistToggle.classList.toggle('active');
+        const isEnabled = aiAssistToggle.classList.contains('active');
+
+        await chrome.storage.local.set({ isAiAssistEnabled: isEnabled });
+
+        // Notify content script
+        if (isOnOverleaf) {
+            try {
+                await chrome.tabs.sendMessage(tab.id, {
+                    type: 'SET_AI_ASSIST',
                     payload: { enabled: isEnabled }
                 });
             } catch (e) {

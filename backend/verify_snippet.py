@@ -2,7 +2,7 @@ import requests
 import json
 
 def test_generate_snippet():
-    url = 'http://localhost:8000/api/v1/snippets/generate'
+    url = 'https://127.0.0.1:8000/api/v1/snippets/generate'
     payload = {
         'type': 'education',
         'data': {

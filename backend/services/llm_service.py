@@ -53,7 +53,7 @@ Respond ONLY with valid JSON in this exact format:
     
     def __init__(self):
         self.client = None
-        self.default_model = self.MODELS['balanced']
+        self.default_model = self.MODELS['fast']
         
         if GROQ_AVAILABLE and settings.GROQ_API_KEY:
             try:

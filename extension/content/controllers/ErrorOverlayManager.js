@@ -31,11 +31,9 @@ class ErrorOverlayManager {
     }
 
     clear() {
-        // Remove existing highlights
-        document.querySelectorAll('.el-error-line').forEach(el => {
-            el.classList.remove('el-error-line');
-            const tooltip = el.querySelector('.el-error-tooltip');
-            if (tooltip) tooltip.remove();
+        // Remove all error highlights
+        document.querySelectorAll('.el-error-line-highlight').forEach(el => {
+            el.classList.remove('el-error-line-highlight');
         });
         this.activeErrorLine = null;
     }
@@ -53,15 +51,9 @@ class ErrorOverlayManager {
     }
 
     highlightLine(element, message) {
-        element.classList.add('el-error-line');
-
-        // Add a tooltip/indicator
-        const tooltip = document.createElement('div');
-        tooltip.className = 'el-error-tooltip';
-        tooltip.textContent = `Error: ${message}`;
-
-        // Append to the line (or relatively positioned container)
-        element.appendChild(tooltip);
+        // Add red highlight class to the entire line
+        element.classList.add('el-error-line-highlight');
+        element.title = message; // Tooltip on hover
     }
 }
 
